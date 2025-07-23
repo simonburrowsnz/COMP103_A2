@@ -3,9 +3,9 @@
 // You may not distribute it in any other way without permission.
 
 /* Code for COMP103 - 2025T2, Assignment 2
- * Name:
- * Username:
- * ID:
+ * Name: Simon Burrows
+ * Username: burrowsimo
+ * ID: 300666122
  */
 
 import ecs100.*;
@@ -15,6 +15,10 @@ import java.util.*;
 public class Pencil{
     private double lastX;
     private double lastY;
+    
+    private ArrayList<double[]> currentStroke;
+    
+    private Stack<ArrayList<double[]>> strokes = new Stack<ArrayList<double[]>>();
 
     /**
      * Setup the GUI
@@ -31,17 +35,24 @@ public class Pencil{
      */
     public void doMouse(String action, double x, double y) {
         if (action.equals("pressed")){
+            currentStroke = new ArrayList<double[]>();
+            double[] position = {x, y};
+            currentStroke.add(position);
             lastX = x;
             lastY = y;
         }
         else if (action.equals("dragged")){
             UI.drawLine(lastX, lastY, x, y);
-            lastX = x;
-            lastY = y;
+            double[] position = {x, y};
+            currentStroke.add(position);
         }
         else if (action.equals("released")){
             UI.drawLine(lastX, lastY, x, y);
         }
+    }
+    
+    public void undo(){
+        
     }
 
     public static void main(String[] arguments){

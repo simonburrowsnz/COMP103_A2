@@ -73,6 +73,7 @@ public class Pencil{
         }
     }
     
+    // Maps ctr+c & ctrl+v to undo and redo //
     public void doKey(String action){
         if(action.equals("")){
             undo();
@@ -82,6 +83,7 @@ public class Pencil{
         }
     }
     
+    // Draws the frame //
     private void drawFrame(){
         UI.clearGraphics();
         for(Stroke stroke: strokes){
@@ -89,6 +91,7 @@ public class Pencil{
          }
     }
     
+    // Undoes a stroke //
     public void undo(){
         if(!strokes.empty()){
             undoneStrokes.push(strokes.pop());
@@ -96,6 +99,7 @@ public class Pencil{
         drawFrame();
     }
     
+    // Redoes a stroke //
     public void redo(){
         if(!undoneStrokes.empty()){
             strokes.push(undoneStrokes.pop());
@@ -103,10 +107,12 @@ public class Pencil{
         drawFrame();
     }
     
+    // Sets the width of a stroke to the slider value //
     public void slide(double action){
         currentWidth = action;
     }
     
+    // Lets the user pick the color //
     public void setColor(){
         currentColor = JColorChooser.showDialog(null, "Pick a Color", currentColor);
     }

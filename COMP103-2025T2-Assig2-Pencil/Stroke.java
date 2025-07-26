@@ -28,7 +28,8 @@ public class Stroke
         this.color = c;
         this.width = w;
     }
-
+    
+    // draws the stroke //
     public void drawStroke(){
         UI.setColor(color);
         UI.setLineWidth(width);

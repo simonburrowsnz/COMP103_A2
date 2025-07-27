@@ -3,9 +3,9 @@
 // You may not distribute it in any other way without permission.
 
 /* Code for COMP103 - 2025T2, Assignment 2
- * Name:
- * Username:
- * ID:
+ * Name: Simon Burrows
+ * Username: Burrowsimo
+ * ID: 300666122
  */
 
 import ecs100.*;

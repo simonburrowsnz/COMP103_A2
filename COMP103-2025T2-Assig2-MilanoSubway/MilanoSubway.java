@@ -86,13 +86,53 @@ public class MilanoSubway{
 
     /*# YOUR CODE HERE */
 
+    private void loadStationData(){
+        
+    }
 
+    private void loadSubwayLineData(){
+        
+    }
+    
+    private void loadLineServicesData(){
+        
+    }
     // Methods for answering the queries
     // The setupGUI method suggests the methods you need to write.
 
     /*# YOUR CODE HERE */
 
-
+    private void listAllStations(){
+        
+    }
+    
+    private void listStationsByName(){
+        
+    }
+    
+    private void listAllSubwayLines(){
+        
+    }
+    
+    private void listLinesOfStation(){
+        
+    }
+    
+    private void listStationsOnLine(){
+        
+    }
+    
+    private void onSameLine(){
+        
+    }
+    
+    private void findNextServices(){
+        
+    }
+    
+    private void findTrip(){
+        
+    } 
 
     // ======= written for you ===============
     // Methods for asking the user for station names, line names, and time.

@@ -87,56 +87,207 @@ public class MilanoSubway{
     /*# YOUR CODE HERE */
 
     private void loadStationData(){
-        
+        String fname = "data/stations.data";
+        if (!Files.exists(Path.of(fname))){
+            UI.println("Data missing");
+        }
+
+        try{
+            Scanner scan = new Scanner(Path.of(fname));
+
+            while(scan.hasNext()){
+                String stationName = scan.next();
+                int stationX = scan.nextInt();
+                int stationY = scan.nextInt();
+                allStations.put(stationName, new Station(stationName, stationX, stationY));
+            }   
+        }
+        catch (IOException e) { UI.println("Error reading stations"); }
+
     }
 
     private void loadSubwayLineData(){
-        
+        String fname = "data/subway-lines.data";
+        if (!Files.exists(Path.of(fname))){
+            UI.println("Data missing");
+        }
+
+        try{
+            List<String> subwayNames = Files.readAllLines(Path.of(fname));
+
+            for(String subwayName: subwayNames){
+                String lineName = subwayName;
+
+                SubwayLine nextSubwayLine = new SubwayLine(subwayName);
+
+                Scanner scan = new Scanner(Path.of("data/"+subwayName+"-stations.data"));
+
+                while(scan.hasNext()){
+                    String StationName = scan.next();
+                    double distance = scan.nextDouble();
+                    nextSubwayLine.addStation(allStations.get(StationName), distance);
+                    allStations.get(StationName).addSubwayLine(nextSubwayLine);
+                }
+                allSubwayLines.put(subwayName, nextSubwayLine);
+            }   
+        }
+        catch (IOException e) { UI.println("Error reading file"); }
     }
-    
+
     private void loadLineServicesData(){
-        
+        for(String lineName : allSubwayLines.keySet()){
+
+            try{
+                List<String> subwayLineTimes = Files.readAllLines(Path.of("data/"+lineName+"-services.data"));
+
+                for(String subwayLineTime: subwayLineTimes){
+                    LineService lineToAdd = new LineService(allSubwayLines.get(lineName));
+
+                    String[] times = subwayLineTime.split(" ");
+
+                    for(String t: times){
+                        lineToAdd.addTime(Integer.parseInt(t));
+                    }
+                    allSubwayLines.get(lineName).addLineService(lineToAdd);
+                }
+            }
+            catch (IOException e) { UI.println("Error reading file"); }
+        }   
     }
+
     // Methods for answering the queries
     // The setupGUI method suggests the methods you need to write.
 
     /*# YOUR CODE HERE */
 
     private void listAllStations(){
-        
+        UI.clearText();
+        UI.println("All Stations in Milan:");
+        UI.println("----------------");
+        for(String stationName: allStations.keySet()){
+            UI.println(stationName);
+        }
+        UI.println();
     }
-    
+
     private void listStationsByName(){
-        
+        UI.clearText();
+        UI.println("All Stations in Milan sorted by name:");
+        UI.println("----------------");
+        List<String> sortedList = new ArrayList<>(allStations.keySet());
+
+        Collections.sort(sortedList);
+
+        for(String stationName: sortedList){
+            UI.println(stationName);
+        }
     }
-    
+
     private void listAllSubwayLines(){
-        
+        UI.clearText();
+        UI.println("All Subway Lines in Milan:");
+        UI.println("----------------");
+        for(String subwayName: allSubwayLines.keySet()){
+            UI.println(allSubwayLines.get(subwayName).toString());
+        }
     }
-    
+
     private void listLinesOfStation(){
-        
+        UI.clearText();
+        UI.println("Subway lines for " + currentStationName + ":");
+        UI.println("----------------");
+
+        Set<SubwayLine> lines = allStations.get(currentStationName).getSubwayLines();
+
+        for(SubwayLine line: lines){
+            UI.println(line.toString());
+        }
     }
-    
+
     private void listStationsOnLine(){
+        UI.clearText();
+        UI.println("Stations for " + currentLineName + ":");
+        UI.println("----------------");
         
+        List<Station> stations = allSubwayLines.get(currentLineName).getStations();
+        for(Station station: stations){
+            UI.println(station);
+        }
     }
-    
+
     private void onSameLine(){
+        UI.clearText();
         
+        Set<SubwayLine> currentLines = allStations.get(currentStationName).getSubwayLines();
+        
+        Set<SubwayLine> destinationLines = allStations.get(destinationName).getSubwayLines();
+        
+        Set<SubwayLine> intercestingLines = new HashSet<>(currentLines);
+        intercestingLines.retainAll(destinationLines);
+        
+        if(intercestingLines == null || intercestingLines.size() == 0){
+            UI.println("No subway line found from " + currentStationName + " to " + destinationName);
+        }
+        else{
+            UI.println("Subway lines found from " + currentStationName + " to " + destinationName + ":");
+            for(SubwayLine line: intercestingLines){
+                double distance = Math.round(10 * Math.abs(line.getDistanceFromStart(allStations.get(currentStationName)) - line.getDistanceFromStart(allStations.get(destinationName)))) / 10;
+                UI.println(line.toString() + " Distance: " + distance + "km");
+            }
+        }
     }
-    
+
     private void findNextServices(){
-        
-    }
+        UI.clearText();
+        UI.println("Next services from " + currentStationName + " after " + timeToString(startTime) + ":");
+        UI.println("----------------");
+
+        Set<SubwayLine> lines = allStations.get(currentStationName).getSubwayLines();
+
+        for(SubwayLine line: lines){
+            List<LineService> services = line.getLineServices();
+            List<Station> stations = line.getStations();
+            
+            int stationNo = stations.indexOf(allStations.get(currentStationName));
+            int nextService = Integer.MAX_VALUE;
+            for(LineService service: services){
+                int time = service.getTimes().get(stationNo);
     
+                if(time < nextService && time > startTime){
+                    nextService = time;
+                }
+            }
+            
+            if(nextService == Integer.MAX_VALUE){
+                UI.println("There are no services after " + timeToString(startTime) + " on " + line.toString());
+            }
+            else{
+                UI.println("Next service on " + line.toString() + " is: " + timeToString(nextService));
+            }
+            
+        }
+    }
+
     private void findTrip(){
-        
+        UI.clearText();
     } 
 
+    private String timeToString(int time){
+        String t = Integer.toString(time);
+        
+        if(t.length() == 4){
+            return t.substring(0, 2) + ":" + t.substring(2, 4);    
+        }
+        else if(t.length() == 3){
+            return t.substring(0, 1) + ":" + t.substring(1, 3);    
+        }
+        else{
+            return t;
+        }
+    }
     // ======= written for you ===============
     // Methods for asking the user for station names, line names, and time.
-    
+
     /**
      * Set the startTime.
      * If user enters an invalid time, it reports an error
@@ -147,6 +298,7 @@ public class MilanoSubway{
             newTime=Integer.parseInt(time);
             if (newTime >=0 && newTime<2400){
                 startTime = newTime;
+                UI.println("Time set to: " + newTime);
             }
             else {
                 UI.println("Time must be between 0000 and 2359");
@@ -187,20 +339,19 @@ public class MilanoSubway{
         currentLineName = name;
     }
 
-
     // 
     /**
-    * Method to get a string from a dialog box with a list of options
-    */
+     * Method to get a string from a dialog box with a list of options
+     */
     public String getOptionFromList(String question, Collection<String> options){
         Object[] possibilities = options.toArray();
         Arrays.sort(possibilities);
         return (String)javax.swing.JOptionPane.showInputDialog
-            (UI.getFrame(),
-             question, "",
-             javax.swing.JOptionPane.PLAIN_MESSAGE,
-             null,
-             possibilities,
-             possibilities[0].toString());
+        (UI.getFrame(),
+            question, "",
+            javax.swing.JOptionPane.PLAIN_MESSAGE,
+            null,
+            possibilities,
+            possibilities[0].toString());
     }
 }

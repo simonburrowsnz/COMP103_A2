@@ -9,6 +9,7 @@
  */
 
 import ecs100.*;
+import java.awt.Color;
 import java.util.*;
 import java.util.Map.Entry;
 import java.io.*;
@@ -33,6 +34,10 @@ public class MilanoSubway{
     private String destinationName = "Brenta";      // station to end journey at
     private int startTime = 1200;                   // time for enquiring about
 
+    private int selectIndex = 0;
+
+    int HIGHTLIGHTSIZE = 10; 
+
     /**
      * main method:  set up the user interface and load the data
      */
@@ -53,6 +58,8 @@ public class MilanoSubway{
         UI.addButton("Set Station",          this::setCurrentStation); 
         UI.addButton("Set Line",             this::setCurrentLine);
         UI.addButton("Set Destination",      this::setDestinationStation);
+        UI.addButton("Select Station",       this::selectCurrentStation); 
+        UI.addButton("Select Destination",   this::selectCurrentLine);
         UI.addTextField("Set Time (24hr)",   this::setTime);
         UI.addButton("Lines of Station",     this::listLinesOfStation);
         UI.addButton("Stations on Line",     this::listStationsOnLine);
@@ -61,6 +68,8 @@ public class MilanoSubway{
         UI.addButton("Find Trip",            this::findTrip);
 
         UI.addButton("Quit", UI::quit);
+        UI.setMouseListener(this::doMouse);
+        UI.setMouseMotionListener(this::doMouse);
         UI.setWindowSize(1500, 750);
         UI.setDivider(0.2);
 
@@ -86,6 +95,7 @@ public class MilanoSubway{
 
     /*# YOUR CODE HERE */
 
+    // Loads the station data //
     private void loadStationData(){
         String fname = "data/stations.data";
         if (!Files.exists(Path.of(fname))){
@@ -106,6 +116,7 @@ public class MilanoSubway{
 
     }
 
+    // Loads the subway line data //
     private void loadSubwayLineData(){
         String fname = "data/subway-lines.data";
         if (!Files.exists(Path.of(fname))){
@@ -134,6 +145,7 @@ public class MilanoSubway{
         catch (IOException e) { UI.println("Error reading subwayline"); }
     }
 
+    // Loads the line services data //
     private void loadLineServicesData(){
         for(String lineName : allSubwayLines.keySet()){
 
@@ -160,6 +172,7 @@ public class MilanoSubway{
 
     /*# YOUR CODE HERE */
 
+    // Lists all the stations //
     private void listAllStations(){
         UI.clearText();
         UI.println("All Stations in Milan:");
@@ -170,6 +183,7 @@ public class MilanoSubway{
         UI.println();
     }
 
+    // Lists all the stations by name //
     private void listStationsByName(){
         UI.clearText();
         UI.println("All Stations in Milan sorted by name:");
@@ -183,6 +197,7 @@ public class MilanoSubway{
         }
     }
 
+    // Lists all the subway lines //
     private void listAllSubwayLines(){
         UI.clearText();
         UI.println("All Subway Lines in Milan:");
@@ -192,6 +207,7 @@ public class MilanoSubway{
         }
     }
 
+    // Lists all the subway lines of a stations //
     private void listLinesOfStation(){
         UI.clearText();
         UI.println("Subway lines for " + currentStationName + ":");
@@ -204,30 +220,42 @@ public class MilanoSubway{
         }
     }
 
+    // Selects the current station to be select by the mouse //
+    private void selectCurrentStation(){
+        selectIndex = 0;
+    }
+
+    // Selects the destination station to be select by the mouse //
+    private void selectCurrentLine(){
+        selectIndex = 1;
+    }
+
+    // Lists the stations on a line //
     private void listStationsOnLine(){
         UI.clearText();
         UI.println("Stations for " + currentLineName + ":");
         UI.println("----------------");
-        
+
         List<Station> stations = allSubwayLines.get(currentLineName).getStations();
         for(Station station: stations){
             UI.println(station);
         }
     }
 
+    // Lists all lines that go from the current station to the destintion station //
     private void onSameLine(){
         UI.clearText();
-        
+
         Set<SubwayLine> intercestingLines = findIntercestingLines();
-        
-        if(intercestingLines == null || intercestingLines.size() == 0){
+
+        if(intercestingLines.size() == 0){
             UI.println("No subway line found from " + currentStationName + " to " + destinationName);
         }
         else{
             UI.println("Subway lines found from " + currentStationName + " to " + destinationName + ":");
             for(SubwayLine line: intercestingLines){
                 double distance = line.getDistanceFromStart(allStations.get(destinationName))
-                                  - line.getDistanceFromStart(allStations.get(currentStationName));
+                    - line.getDistanceFromStart(allStations.get(currentStationName));
                 distance = round(distance, 1);
                 if(distance > 0)
                     UI.println(line.toString() + " Distance: " + distance + "km");
@@ -235,6 +263,7 @@ public class MilanoSubway{
         }
     }
 
+    // Finds the next services from the current station //
     private void findNextServices(){
         UI.clearText();
         UI.println("Next services from " + currentStationName + " after " + timeToString(startTime) + ":");
@@ -245,121 +274,341 @@ public class MilanoSubway{
         for(SubwayLine line: lines){
             List<LineService> services = line.getLineServices();
             List<Station> stations = line.getStations();
-            
+
             int stationNo = stations.indexOf(allStations.get(currentStationName));
             int nextService = Integer.MAX_VALUE;
             for(LineService service: services){
                 int time = service.getTimes().get(stationNo);
-    
+
                 if(time < nextService && time > startTime){
                     nextService = time;
                 }
             }
-            
+
             if(nextService == Integer.MAX_VALUE){
                 UI.println("There are no services after " + timeToString(startTime) + " on " + line.toString());
             }
             else{
                 UI.println("Next service on " + line.toString() + " is: " + timeToString(nextService));
             }
-            
+
         }
     }
 
+    // Finds a trip from the current station to the destination station //
     private void findTrip() {
         UI.clearText();
-        UI.println("Not implemented");
+        UI.println("Finding all paths from " + currentStationName + " to " + destinationName + "...");
+        UI.println("----------------");
+
+        Set<SubwayLine> intercestingLines = findIntercestingLines();
+
+        List<List<List<String>>> paths = pathsBetweenStations(currentStationName, destinationName); 
+
+        int shortestTime = Integer.MAX_VALUE;
+        List<List<String>> shortestPath = new ArrayList<List<String>>();
+        List<Integer> times = new ArrayList<Integer>();
+        List<Integer> leavingTimes = new ArrayList<Integer>();
+        for(List<List<String>> path: paths){
+            int pathArvivalTime = startTime;
+            List<Integer> pathArvivalTimes = new ArrayList<Integer>();
+            List<Integer> pathLeavingTimes = new ArrayList<Integer>();
+            for(List<String> segment: path){
+                pathArvivalTime = segmentToTime(segment, pathArvivalTime);
+
+                pathArvivalTimes.add(pathArvivalTime);
+                pathLeavingTimes.add(segmentToTime(segment, pathArvivalTime, true));
+            }
+
+            if(pathArvivalTime < shortestTime){
+                shortestTime = pathArvivalTime;
+                shortestPath = path;
+                times = pathArvivalTimes;
+                leavingTimes = pathLeavingTimes;
+            }
+        }
+
+        UI.println("Shortest path found from " + currentStationName + " to " + destinationName + ":");
+        int i = 0;
+
+        for(List<String> segment: shortestPath){
+            UI.println("Take the " + segment.get(2) + " from " + segment.get(0) + " to " + segment.get(1) + " from: " + timeToString(leavingTimes.get(i)) + "-" + timeToString(times.get(i)));
+            UI.println("Then");
+            i++;
+            
+            hilightStation(allStations.get(segment.get(0)));
+            hilightStation(allStations.get(segment.get(1)));
+        }
+        UI.println("You will arrive at the destination at: " + timeToString(times.get(i-1)));
+
     }
 
-    private String timeToString(int time){
-        String t = Integer.toString(time);
-        
-        if(t.length() == 4){
-            return t.substring(0, 2) + ":" + t.substring(2, 4);    
-        }
-        else if(t.length() == 3){
-            return t.substring(0, 1) + ":" + t.substring(1, 3);    
+    // Has the mouse logic /
+    public void doMouse(String action, double x, double y){
+
+        if (action.equals("pressed")){
+            boolean changed = false;
+
+            switch(selectIndex){
+                case 0:
+                    for(String stationName: allStations.keySet()){
+                        Station station = allStations.get(stationName);
+                        if(Math.abs(station.getXCoord() - x) < HIGHTLIGHTSIZE && Math.abs(station.getYCoord() - y) < HIGHTLIGHTSIZE){
+                            currentStationName = stationName;
+                            changed = true;
+                        }
+                    }
+                    if(changed){
+                        UI.println("Current Station changed to: " + currentStationName);
+                    }
+                    break;
+                case 1:
+                    for(String stationName: allStations.keySet()){
+                        Station station = allStations.get(stationName);
+                        if(Math.abs(station.getXCoord() - x) < HIGHTLIGHTSIZE && Math.abs(station.getYCoord() - y) < HIGHTLIGHTSIZE){
+                            destinationName = stationName;
+                            changed = true;
+                        }
+                    }
+                    if(changed){
+                        UI.println("Current Destination changed to: " + destinationName);
+                    }
+                    break;
+
+            }
         }
         else{
-            return t;
+            switch(selectIndex){
+                case 0:
+                    for(String stationName: allStations.keySet()){
+                        Station station = allStations.get(stationName);
+                        if(Math.abs(station.getXCoord() - x) < HIGHTLIGHTSIZE && Math.abs(station.getYCoord() - y) < HIGHTLIGHTSIZE){
+                            UI.drawImage("data/system-map.jpg", 0, 0, 1000, 704);
+                            hilightStation(station);
+                        }
+                    }
+                    break;
+                case 1:
+                    for(String stationName: allStations.keySet()){
+                        Station station = allStations.get(stationName);
+                        if(Math.abs(station.getXCoord() - x) < HIGHTLIGHTSIZE && Math.abs(station.getYCoord() - y) < HIGHTLIGHTSIZE){
+                            UI.drawImage("data/system-map.jpg", 0, 0, 1000, 704);
+                            hilightStation(station);
+                        }
+                    }
+                    break;
+            }
         }
     }
-    
+
+    // Highlights a specific Station on the map //
+    private void hilightStation(Station station){
+        UI.setColor(Color.black);
+        UI.setLineWidth(5);
+        UI.drawOval(station.getXCoord()-HIGHTLIGHTSIZE/2, station.getYCoord()-HIGHTLIGHTSIZE/2, HIGHTLIGHTSIZE, HIGHTLIGHTSIZE);
+    }
+
+    // Turns an integer into a string with a colon //
+    private String timeToString(int time){
+        String t = Integer.toString(time);
+
+        int length = t.length();
+        if(length  != 4){
+            String zeros = "";
+            for(int i = 0; i < 4-length; i++){
+                zeros += "0";
+            }
+            t = zeros + t;
+        }
+        return t.substring(0, 2) + ":" + t.substring(2, 4);
+    }
+
+    // Finds intercenting lines between two stations //
     private Set<SubwayLine> findIntercestingLines(String stationA, String stationB){
         Set<SubwayLine> currentLines = allStations.get(stationA).getSubwayLines();
-        
+
         Set<SubwayLine> destinationLines = allStations.get(stationB).getSubwayLines();
-        
+
         Set<SubwayLine> intercestingLines = new HashSet<>(currentLines);
         intercestingLines.retainAll(destinationLines);
-        
+
         return intercestingLines;
     }
-    
+
+    // Does the above for the current and destination station //
     private Set<SubwayLine> findIntercestingLines(){  
         return findIntercestingLines(currentStationName, destinationName);
     }
-    
+
+    // Rounds a number to the specified decimal place //
     private double round(double number, int dp){
         double result = number * Math.pow(10, dp);
         result = Math.round(result);
         result /= Math.pow(10, dp);
         return result;
     }
-    
-    private List<List<Station>> getEdges(){
-        Set<List<Station>> result = new HashSet<List<Station>>();
-        for(String startStationName: allStations.keySet()){
-            Station startStation = allStations.get(startStationName);
-            
-            for(String compareStationName: allStations.keySet()){
-                Station compareStation = allStations.get(compareStationName);
-                Set<SubwayLine> commonLines = findIntercestingLines(startStationName, compareStationName);
-                
-                if(!(commonLines == null || commonLines.size() == 0)){
-                    for(SubwayLine line: commonLines){
-                        List<Station> commonStations = line.getStations();
-                        int startIndex = commonStations.indexOf(startStation);
-                        int compareIndex = commonStations.indexOf(compareStation);
-                        
-                        if(Math.abs(startIndex - compareIndex) == 1){
-                            List<Station> newEdge = new ArrayList<Station>();
-                            newEdge.add(startStation);
-                            newEdge.add(compareStation);
-                            
-                            result.add(newEdge);
-                        }
+
+    // Finds all paths between two stations //
+    private List<List<List<String>>> pathsBetweenStations(String stationA, String stationB){
+        List<List<List<String>>> allPaths = new ArrayList<>();
+        List<String> currentPath = new ArrayList<>();
+        Set<String> visited = new HashSet<>();
+
+        dfsPaths(stationA, stationB, visited, currentPath, allPaths);
+
+        return allPaths;
+    }
+
+    // The Depth-First Search algorythym finds all simple paths that are less than 50 stations long //
+    private void dfsPaths(String current, String destination, Set<String> visited,
+    List<String> path, List<List<List<String>>> allPaths) {
+        // Stop exploring this path if it's too long
+        if (path.size() > 50) {
+            return;
+        }
+        visited.add(current);
+        path.add(current);
+
+        if (current.equals(destination)) {
+            List<List<String>> segments = convertToSegments(new ArrayList<>(path));
+            if (!segments.isEmpty()) {
+                allPaths.add(segments);
+            } 
+            else {
+                UI.println("Invalid segment chain: " + path);
+            }
+        }
+
+        else {
+            for (String neighbor : getNeighbours(current)) {
+                if (!visited.contains(neighbor)) {
+                    dfsPaths(neighbor, destination, visited, path, allPaths);
+                }
+            }
+        }
+
+        path.remove(path.size() - 1);
+        visited.remove(current);
+    }
+
+    // Converts a list of Stations into segments. A segment is {StartOfSegmentStation, EndOfSegmentStation, LinesItsOn} //
+    private List<List<String>> convertToSegments(List<String> stationPath){
+        List<List<String>> segments = new ArrayList<>();
+
+        if (stationPath.size() < 2) return segments;
+
+        String from = stationPath.get(0);
+        String currentLine = null;
+
+        for (int i = 1; i < stationPath.size(); i++) {
+            String to = stationPath.get(i);
+
+            Set<SubwayLine> commonLines = findIntercestingLines(from, to);
+
+            if (commonLines.isEmpty()) {
+                // Should not happen if the path is valid
+                return new ArrayList<>();
+            }
+
+            // Prefer currentLine if still valid
+            String nextLine = currentLine;
+            if (currentLine == null || !commonLines.contains(currentLine)) {
+                for(SubwayLine line: commonLines){
+                    double distance = line.getDistanceFromStart(allStations.get(to))
+                        - line.getDistanceFromStart(allStations.get(from));
+                    distance = round(distance, 1);
+                    if(distance > 0)
+                        nextLine = line.getName();
+                }
+            }
+
+            // Merge into last segment if same line
+            if (!segments.isEmpty() && segments.get(segments.size() - 1).get(2).equals(nextLine)) {
+                segments.get(segments.size() - 1).set(1, to);  // extend the current segment's destination
+            } else {
+                List<String> segment = new ArrayList<>();
+                segment.add(from);
+                segment.add(to);
+                segment.add(nextLine);
+                segments.add(segment);
+            }
+
+            currentLine = nextLine;
+            from = to;
+        }
+
+        return segments;
+    }
+
+    // Finds all the neibours of a station //
+    private List<String> getNeighbours(String baseStationName){
+        Set<String> result = new HashSet<String>();
+        Station baseStation = allStations.get(baseStationName);
+
+        for(String compareStationName: allStations.keySet()){
+            Station compareStation = allStations.get(compareStationName);
+            Set<SubwayLine> commonLines = findIntercestingLines(baseStationName, compareStationName);
+
+            if(!(commonLines == null || commonLines.size() == 0)){
+                for(SubwayLine line: commonLines){
+                    List<Station> commonStations = line.getStations();
+                    int startIndex = commonStations.indexOf(baseStation);
+                    int compareIndex = commonStations.indexOf(compareStation);
+
+                    if(Math.abs(startIndex - compareIndex) == 1){
+                        result.add(compareStationName);
                     }
                 }
             }
         }
-        
-        return new ArrayList<List<Station>>(result);
+
+        return new ArrayList<String>(result);
     }
-    
-    private List<List<String>> pathBetweenStations(String stationA, String stationB){
-        
-        Set<SubwayLine> intercestingLines = findIntercestingLines(stationA, stationB);
-        
-        if(intercestingLines == null || intercestingLines.size() == 0){
-            
+
+    // Finds when you arive from a station along a segment //
+    private int segmentToTime(List<String> segment, int newStartTime){
+        SubwayLine line = allSubwayLines.get(segment.get(2));
+        List<LineService> services = line.getLineServices();
+        List<Station> stations = line.getStations();
+
+        int boardingStationNo = stations.indexOf(allStations.get(segment.get(0)));
+        int departingStationNo = stations.indexOf(allStations.get(segment.get(1)));
+        int nextService = Integer.MAX_VALUE;
+        int arrivleService = Integer.MAX_VALUE;
+        for(LineService service: services){
+            int boardingTime = service.getTimes().get(boardingStationNo);
+            int departingTime = service.getTimes().get(departingStationNo);
+
+            if(boardingTime < nextService && boardingTime > newStartTime){
+                nextService = boardingTime;
+                arrivleService = departingTime;
+            }
         }
-        else{
-            List<List<String>> result = new ArrayList<List<String>>();
-            for(SubwayLine line: intercestingLines)
-                return new ArrayList<String>(stationA, stationB, allSubwayLines.keyOf(line));
+        return arrivleService;
+    }
+
+    // Finds when you leave from a station along a segment //
+    private int segmentToTime(List<String> segment, int newStartTime, boolean firstValue){
+        SubwayLine line = allSubwayLines.get(segment.get(2));
+        List<LineService> services = line.getLineServices();
+        List<Station> stations = line.getStations();
+
+        int boardingStationNo = stations.indexOf(allStations.get(segment.get(0)));
+        int departingStationNo = stations.indexOf(allStations.get(segment.get(1)));
+        int nextService = Integer.MAX_VALUE;
+        int arrivleService = Integer.MAX_VALUE;
+        for(LineService service: services){
+            int boardingTime = service.getTimes().get(boardingStationNo);
+            int departingTime = service.getTimes().get(departingStationNo);
+
+            if(boardingTime < nextService && boardingTime > newStartTime){
+                nextService = boardingTime;
+                arrivleService = departingTime;
+            }
         }
-        return null;
+        return nextService;
     }
-    
-    private double pathToTime(List<String> path){
-        return 0;
-    }
-    
-    private String reverseMapSearch(Map<String, ?> map, value object){
-        
-    }
-    
+
     // ======= written for you ===============
     // Methods for asking the user for station names, line names, and time.
 
